@@ -67,6 +67,7 @@ class LLMClient:
         if self._openai_client is None:
             self._openai_client = AsyncOpenAI(
                 api_key=self.settings.llm.openai_api_key,
+                base_url=self.settings.llm.openai_base_url,
             )
         return self._openai_client
 

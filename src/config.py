@@ -50,6 +50,7 @@ class LLMSettings(BaseSettings):
     # OpenAI
     openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-4-turbo-preview", alias="OPENAI_MODEL")
+    openai_base_url: str = Field(default="https://api.openai.com/v1", alias="OPENAI_BASE_URL")
     openai_temperature: float = Field(default=0.1, alias="OPENAI_TEMPERATURE")
     openai_max_tokens: int = Field(default=4096, alias="OPENAI_MAX_TOKENS")
 
