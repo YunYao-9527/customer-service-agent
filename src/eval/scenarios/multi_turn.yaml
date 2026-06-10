@@ -1,0 +1,96 @@
+# 多轮对话场景评测
+
+# 场景 1: 复杂退款流程
+- id: "multi_turn_001"
+  name: "复杂退款流程"
+  description: "多轮对话完成退款，包含信息收集和确认"
+  category: "multi_turn"
+  messages:
+    - role: "user"
+      content: "我要退款"
+    - role: "user"
+      content: "订单号是 ORD20240101001"
+    - role: "user"
+      content: "买错了，想退"
+    - role: "user"
+      content: "确认退款"
+  expected:
+    final_state: "COMPLETED"
+    expected_tools: ["get_order", "request_refund"]
+  max_turns: 15
+
+# 场景 2: 先查后退
+- id: "multi_turn_002"
+  name: "先查后退"
+  description: "先查询订单，再决定是否退款"
+  category: "multi_turn"
+  messages:
+    - role: "user"
+      content: "帮我查一下订单 ORD20240101001"
+    - role: "user"
+      content: "这个订单可以退款吗？"
+    - role: "user"
+      content: "那我要退款"
+    - role: "user"
+      content: "不想要了"
+    - role: "user"
+      content: "确认"
+  expected:
+    final_state: "COMPLETED"
+    expected_tools: ["get_order", "request_refund"]
+  max_turns: 20
+
+# 场景 3: 多个操作
+- id: "multi_turn_003"
+  name: "多个操作"
+  description: "用户连续执行多个操作"
+  category: "multi_turn"
+  messages:
+    - role: "user"
+      content: "帮我查一下订单 ORD20240101001 的物流"
+    - role: "user"
+      content: "顺便改一下收货地址"
+    - role: "user"
+      content: "改成北京市海淀区中关村100号"
+    - role: "user"
+      content: "确认"
+  expected:
+    final_state: "COMPLETED"
+    expected_tools: ["get_logistics", "get_order", "update_logistics_address"]
+  max_turns: 15
+
+# 场景 4: 用户改变主意
+- id: "multi_turn_004"
+  name: "用户改变主意"
+  description: "用户在确认前改变主意"
+  category: "multi_turn"
+  messages:
+    - role: "user"
+      content: "我要取消订单 ORD20240101001"
+    - role: "user"
+      content: "不想要了"
+    - role: "user"
+      content: "等等，让我再想想"
+    - role: "user"
+      content: "还是算了，不取消了"
+  expected:
+    final_state: "INIT"
+    expected_tools: ["get_order"]
+  max_turns: 15
+
+# 场景 5: 问候和闲聊
+- id: "multi_turn_005"
+  name: "问候和闲聊"
+  description: "用户问候后进行业务操作"
+  category: "multi_turn"
+  messages:
+    - role: "user"
+      content: "你好"
+    - role: "user"
+      content: "我想查一下我的订单"
+    - role: "user"
+      content: "订单号 ORD20240101001"
+  expected:
+    final_state: "COMPLETED"
+    expected_tools: ["get_order"]
+  max_turns: 10

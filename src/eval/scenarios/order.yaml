@@ -1,0 +1,61 @@
+# 订单操作场景评测
+
+# 场景 1: 查询订单
+- id: "order_001"
+  name: "查询订单详情"
+  description: "用户查询订单详情"
+  category: "order"
+  messages:
+    - role: "user"
+      content: "帮我查一下订单 ORD20240101001"
+  expected:
+    final_state: "COMPLETED"
+    expected_tools: ["get_order"]
+  max_turns: 5
+
+# 场景 2: 取消订单
+- id: "order_002"
+  name: "取消已支付订单"
+  description: "用户取消已支付的订单"
+  category: "order"
+  messages:
+    - role: "user"
+      content: "我要取消订单 ORD20240101001"
+    - role: "user"
+      content: "不想要了"
+    - role: "user"
+      content: "确认"
+  expected:
+    final_state: "COMPLETED"
+    expected_tools: ["get_order", "cancel_order"]
+  max_turns: 10
+
+# 场景 3: 取消未支付订单
+- id: "order_003"
+  name: "取消未支付订单"
+  description: "用户取消未支付的订单"
+  category: "order"
+  messages:
+    - role: "user"
+      content: "帮我取消订单 ORD20240101001"
+    - role: "user"
+      content: "确认"
+  expected:
+    final_state: "COMPLETED"
+    expected_tools: ["get_order", "cancel_order"]
+  max_turns: 10
+
+# 场景 4: 查询用户订单列表
+- id: "order_004"
+  name: "查询用户订单列表"
+  description: "用户查询自己的订单列表"
+  category: "order"
+  messages:
+    - role: "user"
+      content: "我想看看我最近的订单"
+    - role: "user"
+      content: "用户 ID 是 1"
+  expected:
+    final_state: "COMPLETED"
+    expected_tools: ["get_user_orders"]
+  max_turns: 5

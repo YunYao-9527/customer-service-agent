@@ -1,0 +1,48 @@
+# 物流操作场景评测
+
+# 场景 1: 查询物流
+- id: "logistics_001"
+  name: "查询物流状态"
+  description: "用户查询订单物流状态"
+  category: "logistics"
+  messages:
+    - role: "user"
+      content: "我的订单 ORD20240201003 到哪了？"
+  expected:
+    final_state: "COMPLETED"
+    expected_tools: ["get_logistics"]
+  max_turns: 5
+
+# 场景 2: 修改地址
+- id: "logistics_002"
+  name: "修改收货地址"
+  description: "用户修改订单收货地址"
+  category: "logistics"
+  messages:
+    - role: "user"
+      content: "我要改一下订单 ORD20240201003 的收货地址"
+    - role: "user"
+      content: "改成北京市海淀区中关村100号"
+    - role: "user"
+      content: "确认"
+  expected:
+    final_state: "COMPLETED"
+    expected_tools: ["get_order", "update_logistics_address"]
+  max_turns: 10
+
+# 场景 3: 修改地址 - 已签收
+- id: "logistics_003"
+  name: "修改地址 - 已签收"
+  description: "用户尝试修改已签收订单的地址"
+  category: "logistics"
+  messages:
+    - role: "user"
+      content: "我要改订单 ORD20240210004 的地址"
+    - role: "user"
+      content: "改成上海市浦东新区"
+    - role: "user"
+      content: "确认"
+  expected:
+    final_state: "FAILED"
+    expected_tools: ["get_order", "update_logistics_address"]
+  max_turns: 10

@@ -1,0 +1,67 @@
+# 账户操作场景评测
+
+# 场景 1: 查询账户
+- id: "account_001"
+  name: "查询账户信息"
+  description: "用户查询账户信息"
+  category: "account"
+  messages:
+    - role: "user"
+      content: "帮我查一下用户 1 的账户信息"
+  expected:
+    final_state: "COMPLETED"
+    expected_tools: ["get_account"]
+  max_turns: 5
+
+# 场景 2: 冻结账户
+- id: "account_002"
+  name: "冻结账户"
+  description: "冻结可疑账户"
+  category: "account"
+  messages:
+    - role: "user"
+      content: "冻结用户 2 的账户"
+    - role: "user"
+      content: "检测到异常登录行为"
+    - role: "user"
+      content: "确认"
+  expected:
+    final_state: "COMPLETED"
+    expected_tools: ["get_account", "freeze_account"]
+  max_turns: 10
+
+# 场景 3: 解冻账户
+- id: "account_003"
+  name: "解冻账户"
+  description: "解冻已验证的账户"
+  category: "account"
+  messages:
+    - role: "user"
+      content: "解冻用户 2 的账户"
+    - role: "user"
+      content: "用户已验证身份，确认是本人操作"
+    - role: "user"
+      content: "确认"
+  expected:
+    final_state: "COMPLETED"
+    expected_tools: ["get_account", "unfreeze_account"]
+  max_turns: 10
+
+# 场景 4: 身份验证
+- id: "account_004"
+  name: "身份验证"
+  description: "高风险操作前的身份验证"
+  category: "account"
+  messages:
+    - role: "user"
+      content: "我要解冻账户"
+    - role: "user"
+      content: "用户 ID 是 1"
+    - role: "user"
+      content: "姓名张三，手机 13800138001"
+    - role: "user"
+      content: "确认"
+  expected:
+    final_state: "COMPLETED"
+    expected_tools: ["get_account", "verify_user_identity", "unfreeze_account"]
+  max_turns: 15

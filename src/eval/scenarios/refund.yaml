@@ -1,0 +1,73 @@
+# 退款场景评测
+
+# 场景 1: 简单退款
+- id: "refund_001"
+  name: "简单退款 - 已支付订单"
+  description: "用户申请退款已支付的订单"
+  category: "refund"
+  messages:
+    - role: "user"
+      content: "我要退款，订单号 ORD20240101001"
+    - role: "user"
+      content: "不想要了"
+    - role: "user"
+      content: "确认"
+  expected:
+    final_state: "COMPLETED"
+    expected_tools: ["get_order", "request_refund"]
+  max_turns: 10
+
+# 场景 2: 缺少信息的退款
+- id: "refund_002"
+  name: "退款 - 缺少订单号"
+  description: "用户申请退款但未提供订单号"
+  category: "refund"
+  messages:
+    - role: "user"
+      content: "我要退款"
+    - role: "user"
+      content: "订单号是 ORD20240115002"
+    - role: "user"
+      content: "商品有质量问题"
+    - role: "user"
+      content: "确认"
+  expected:
+    final_state: "COMPLETED"
+    expected_tools: ["get_order", "request_refund"]
+  max_turns: 15
+
+# 场景 3: 退款被拒绝
+- id: "refund_003"
+  name: "退款 - 已完成订单"
+  description: "用户尝试退款已完成的订单"
+  category: "refund"
+  messages:
+    - role: "user"
+      content: "我要退款订单 ORD20240210004"
+    - role: "user"
+      content: "不想要了"
+    - role: "user"
+      content: "确认"
+  expected:
+    final_state: "FAILED"
+    expected_tools: ["get_order", "request_refund"]
+  max_turns: 10
+
+# 场景 4: 部分退款
+- id: "refund_004"
+  name: "部分退款"
+  description: "用户申请部分金额退款"
+  category: "refund"
+  messages:
+    - role: "user"
+      content: "我要退一部分钱，订单号 ORD20240101001"
+    - role: "user"
+      content: "退 1000 块"
+    - role: "user"
+      content: "买贵了，想退差价"
+    - role: "user"
+      content: "确认"
+  expected:
+    final_state: "COMPLETED"
+    expected_tools: ["get_order", "request_refund"]
+  max_turns: 10
