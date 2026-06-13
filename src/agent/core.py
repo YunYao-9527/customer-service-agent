@@ -429,7 +429,7 @@ class CustomerServiceAgent:
 
         description = intent_descriptions.get(intent, intent)
 
-        response = f"确认要执行以下操作吗？\n\n**{description}**\n\n请回复"确认"执行，或"取消"放弃。"
+        response = f"确认要执行以下操作吗？\n\n**{description}**\n\n请回复「确认」执行，或「取消」放弃。"
 
         return {
             "response": response,

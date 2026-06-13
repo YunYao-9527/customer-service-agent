@@ -34,7 +34,7 @@
 | APP_DEBUG | false |
 | DATABASE_URL | sqlite+aiosqlite:///./customer_service.db |
 | LLM_PROVIDER | openai |
-| OPENAI_API_KEY | tp-ck4amttxbmf3peifg80y1pazrvs3f5dec9uigo0x8xoa25nq |
+| OPENAI_API_KEY | your-api-key-here |
 | OPENAI_MODEL | deepseek-chat |
 | OPENAI_BASE_URL | https://api.deepseek.com/v1 |
 | OPENAI_TEMPERATURE | 0.1 |
