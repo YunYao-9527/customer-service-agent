@@ -67,7 +67,7 @@ INJECTION_REGEX = [re.compile(pattern, re.IGNORECASE) for pattern in INJECTION_P
 
 # 敏感信息模式
 SENSITIVE_PATTERNS = {
-    "phone": re.compile(r"1[3-9]\d{9}"),
+    "phone": re.compile(r"(?<!\d)1[3-9]\d{9}(?!\d)"),
     "email": re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"),
     "id_card": re.compile(r"\d{17}[\dXx]"),
     "credit_card": re.compile(r"\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}"),
@@ -151,6 +151,9 @@ class SensitiveDataMasker:
 
     def _mask_match(self, match: str, mask_char: str) -> str:
         """对匹配到的内容进行脱敏"""
+        if "@" in match:
+            local, domain = match.rsplit("@", 1)
+            return local[:3] + mask_char * 3 + "@" + domain
         if len(match) <= 4:
             return mask_char * len(match)
 

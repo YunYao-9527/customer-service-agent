@@ -322,7 +322,8 @@ class CustomerServiceAgent:
 
     async def _recognize_intent(self, user_message: str) -> dict[str, Any]:
         """使用 LLM 识别用户意图"""
-        prompt = INTENT_PROMPT.format(user_message=user_message)
+        # The prompt contains a JSON example whose braces must remain literal.
+        prompt = INTENT_PROMPT.replace("{user_message}", user_message)
 
         messages = [
             {"role": "system", "content": "你是一个意图识别助手，请准确分析用户意图。"},

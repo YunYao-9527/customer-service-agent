@@ -334,7 +334,7 @@ async def seed_all() -> None:
     async with async_session_factory() as session:
         # 检查是否已有数据
         result = await session.execute(select(User))
-        if result.scalar_one_or_none():
+        if result.scalars().first():
             logger.info("database_already_seeded")
             return
 

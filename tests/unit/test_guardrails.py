@@ -100,7 +100,7 @@ class TestSensitiveDataMasker:
 
         assert result["name"] == "张三"  # 非敏感字段不变
         assert "****" in result["phone"]
-        assert "****" in result["email"]
+        assert result["email"] == "zha***@example.com"
 
 
 if __name__ == "__main__":

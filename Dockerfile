@@ -10,7 +10,9 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # 复制依赖文件
-COPY pyproject.toml .
+COPY pyproject.toml README.md ./
+COPY src/ src/
+COPY simulation/ simulation/
 
 # 安装 Python 依赖
 RUN pip install --no-cache-dir --upgrade pip \
@@ -47,4 +49,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"
 
 # 启动命令
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["sh", "-c", "uvicorn src.main:app --host 0.0.0.0 --port ${PORT:-8080}"]

@@ -6,11 +6,16 @@ services:
     plan: free
     buildCommand: pip install -e .
     startCommand: uvicorn src.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
     envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.14"
+      - key: SEED_DEMO_DATA
+        value: "1"
       - key: APP_ENV
         value: production
       - key: APP_DEBUG
-        value: false
+        value: "false"
       - key: DATABASE_URL
         value: sqlite+aiosqlite:///./customer_service.db
       - key: LLM_PROVIDER
@@ -22,10 +27,10 @@ services:
       - key: OPENAI_BASE_URL
         value: https://api.deepseek.com/v1
       - key: OPENAI_TEMPERATURE
-        value: 0.1
+        value: "0.1"
       - key: OPENAI_MAX_TOKENS
-        value: 4096
+        value: "4096"
       - key: ENABLE_GUARDRAILS
-        value: true
+        value: "true"
       - key: LOG_LEVEL
         value: INFO

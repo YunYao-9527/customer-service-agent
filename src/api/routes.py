@@ -20,6 +20,7 @@ from src.api.schemas import (
     ToolCallResponse,
 )
 from src.db.session import get_db
+from src.config import get_settings
 
 logger = structlog.get_logger()
 
@@ -60,6 +61,18 @@ async def chat(
     接收用户消息，返回助手回复。
     支持多轮对话，通过 session_id 维持会话状态。
     """
+    settings = get_settings()
+    api_key = (
+        settings.llm.anthropic_api_key
+        if settings.llm.provider.value == "anthropic"
+        else settings.llm.openai_api_key
+    )
+    if not api_key:
+        raise HTTPException(
+            status_code=503,
+            detail="尚未配置模型服务密钥。请在服务端设置 OPENAI_API_KEY 或 ANTHROPIC_API_KEY。",
+        )
+
     try:
         session_id, agent = get_or_create_agent(request.session_id, db)
 

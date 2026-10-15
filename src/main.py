@@ -6,10 +6,12 @@ FastAPI 应用入口
 
 from contextlib import asynccontextmanager
 from collections.abc import AsyncGenerator
+import os
 
 import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 
 from src.api.routes import router
 from src.config import get_settings
@@ -29,6 +31,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # 初始化数据库
     await init_db()
     logger.info("database_initialized")
+
+    if os.getenv("SEED_DEMO_DATA", "0") == "1":
+        from simulation.seed_data import seed_all
+        await seed_all()
 
     # 注册内置工具
     from src.tools.builtin import (
@@ -77,6 +83,10 @@ def create_app() -> FastAPI:
     # 注册路由
     app.include_router(router, prefix="/api/v1")
 
+    @app.get("/", include_in_schema=False)
+    async def index():
+        return RedirectResponse("/docs")
+
     # 健康检查
     @app.get("/health")
     async def health_check():
@@ -84,6 +94,11 @@ def create_app() -> FastAPI:
             "status": "healthy",
             "version": "0.1.0",
             "env": settings.env.value,
+            "llm_configured": bool(
+                settings.llm.anthropic_api_key
+                if settings.llm.provider.value == "anthropic"
+                else settings.llm.openai_api_key
+            ),
         }
 
     return app
