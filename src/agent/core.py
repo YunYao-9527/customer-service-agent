@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agent.guardrails import guardrails
 from src.agent.llm import LLMClient, LLMResponse, llm_client
+from src.agent.llm_budget import DemoLLMLimitError
 from src.agent.memory import ConversationMemory, memory_manager
 from src.agent.state import AgentState, AgentStateMachine, ConversationContext
 from src.config import get_settings
@@ -182,6 +183,8 @@ class CustomerServiceAgent:
                 response = await self._handle_user_confirmation(user_message)
             else:
                 response = await self._handle_general(user_message)
+        except DemoLLMLimitError:
+            raise
         except Exception as e:
             logger.error(
                 "message_processing_error",
@@ -341,7 +344,7 @@ class CustomerServiceAgent:
             {"role": "user", "content": prompt},
         ]
 
-        response = await self.llm.chat(messages)
+        response = await self.llm.chat(messages, json_mode=True)
 
         try:
             # 解析 JSON 响应
@@ -377,7 +380,7 @@ class CustomerServiceAgent:
             {"role": "user", "content": prompt},
         ]
 
-        response = await self.llm.chat(messages)
+        response = await self.llm.chat(messages, json_mode=True)
 
         try:
             result = json.loads(response.content)

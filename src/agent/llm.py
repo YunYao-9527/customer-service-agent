@@ -5,6 +5,7 @@ LLM 调用封装
 """
 
 import json
+import os
 from typing import Any, Optional
 
 import structlog
@@ -12,6 +13,7 @@ from anthropic import Anthropic
 from openai import AsyncOpenAI
 
 from src.config import LLMProvider, get_settings
+from src.agent.llm_budget import model_budget
 
 logger = structlog.get_logger()
 
@@ -68,6 +70,8 @@ class LLMClient:
             self._openai_client = AsyncOpenAI(
                 api_key=self.settings.llm.openai_api_key,
                 base_url=self.settings.llm.openai_base_url,
+                timeout=35.0,
+                max_retries=0,
             )
         return self._openai_client
 
@@ -85,6 +89,7 @@ class LLMClient:
         messages: list[dict[str, Any]],
         tools: Optional[list[dict[str, Any]]] = None,
         tool_choice: str = "auto",
+        json_mode: bool = False,
     ) -> LLMResponse:
         """
         发送对话请求
@@ -98,9 +103,10 @@ class LLMClient:
             LLM 响应
         """
         provider = self.settings.llm.provider
+        model_budget.reserve({'messages': messages, 'tools': tools})
 
         if provider == LLMProvider.OPENAI:
-            return await self._chat_openai(messages, tools, tool_choice)
+            return await self._chat_openai(messages, tools, tool_choice, json_mode)
         elif provider == LLMProvider.ANTHROPIC:
             return await self._chat_anthropic(messages, tools, tool_choice)
         else:
@@ -111,6 +117,7 @@ class LLMClient:
         messages: list[dict[str, Any]],
         tools: Optional[list[dict[str, Any]]] = None,
         tool_choice: str = "auto",
+        json_mode: bool = False,
     ) -> LLMResponse:
         """OpenAI API 调用"""
         kwargs: dict[str, Any] = {
@@ -123,6 +130,12 @@ class LLMClient:
         if tools:
             kwargs["tools"] = tools
             kwargs["tool_choice"] = tool_choice
+        if json_mode:
+            kwargs['response_format'] = {'type': 'json_object'}
+        if os.getenv('PUBLIC_DEMO', '0') == '1':
+            kwargs['max_tokens'] = min(kwargs['max_tokens'], 1024)
+        if self.settings.llm.openai_base_url.rstrip('/') in {'https://api.deepseek.com', 'https://api.deepseek.com/v1'}:
+            kwargs['extra_body'] = {'thinking': {'type': 'disabled'}}
 
         response = await self.openai_client.chat.completions.create(**kwargs)
 

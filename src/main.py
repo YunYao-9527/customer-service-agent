@@ -96,6 +96,8 @@ def create_app() -> FastAPI:
             "status": "healthy",
             "version": "0.1.0",
             "env": settings.env.value,
+            "llm_provider": 'deepseek' if settings.llm.openai_base_url.rstrip('/') in {'https://api.deepseek.com', 'https://api.deepseek.com/v1'} else settings.llm.provider.value,
+            "llm_model": settings.llm.anthropic_model if settings.llm.provider.value == 'anthropic' else settings.llm.openai_model,
             "llm_configured": bool(
                 settings.llm.anthropic_api_key
                 if settings.llm.provider.value == "anthropic"

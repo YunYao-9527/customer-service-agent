@@ -18,7 +18,7 @@ class ChatRequest(BaseModel):
     """聊天请求"""
     session_id: Optional[str] = Field(None, description="会话 ID，首次对话可不传")
     user_id: Optional[int] = Field(None, description="用户 ID")
-    message: str = Field(..., description="用户消息")
+    message: str = Field(..., min_length=1, max_length=2000, description="用户消息")
 
 
 class ToolCallRequest(BaseModel):

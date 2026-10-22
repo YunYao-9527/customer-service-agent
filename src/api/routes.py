@@ -21,6 +21,7 @@ from src.api.schemas import (
 )
 from src.db.session import get_db
 from src.config import get_settings
+from src.agent.llm_budget import DemoLLMLimitError
 
 logger = structlog.get_logger()
 
@@ -94,6 +95,8 @@ async def chat(
             processing_time=result.get("processing_time", 0),
         )
 
+    except DemoLLMLimitError as e:
+        raise HTTPException(status_code=429, detail=str(e)) from e
     except Exception as e:
         logger.error("chat_error", error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
