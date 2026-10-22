@@ -2,6 +2,8 @@
 
 > [在线项目页](https://yunyao-9527.github.io/customer-service-agent/) · [云端运行说明](DEPLOYMENT_CLOUD.md)
 
+**[打开在线系统](https://yunyao-customer-service.onrender.com/)**：可查询模拟订单、检查政策和确认退款操作。业务工具已接后端；模型对话未配置密钥，接口会明确返回 503。使用 Render Free，休眠后首次访问可能需要等待，演示数据可重置。请勿输入真实个人信息。
+
 > 一个能够完成订单退款、改签、账户冻结、物流修改等真实业务操作的 Agent 系统，而不是只回答问题。
 
 ## 项目亮点
