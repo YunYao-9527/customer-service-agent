@@ -35,6 +35,8 @@ from src.tools.builtin import (
 )
 from src.tools.executor import ToolExecutor
 from src.tools.registry import tool_registry
+from src.rag.retriever import policy_retriever
+from simulation.ecommerce import EcommerceSimulator
 
 logger = structlog.get_logger()
 
@@ -147,6 +149,8 @@ class CustomerServiceAgent:
             处理结果，包含回复内容和操作结果
         """
         start_time = datetime.now()
+        if self.state_machine.current_state in {AgentState.COMPLETED, AgentState.FAILED}:
+            self.state_machine = AgentStateMachine(self.session_id)
 
         # 1. 安全检查
         safety_check = guardrails.check_input(user_message)
@@ -245,7 +249,27 @@ class CustomerServiceAgent:
             self.state_machine.transition_to(AgentState.INFO_COLLECTION)
             return await self._ask_for_info(missing_info)
 
-        if requires_confirmation:
+        return await self._prepare_execution(intent, entities)
+
+    async def _prepare_execution(self, intent, entities):
+        self.state_machine.transition_to(AgentState.POLICY_CHECK)
+        action = {"request_refund": "refund", "cancel_order": "cancel", "update_address": "shipping"}.get(intent)
+        if action and self.db:
+            order = await EcommerceSimulator(self.db).get_order(entities.get("order_no", ""))
+            if not order:
+                self.state_machine.transition_to(AgentState.FAILED)
+                return {"response": "未找到该订单，请核对订单号。", "state": "FAILED"}
+            context = {"order_status": order["status"], "amount": entities.get("amount"),
+                       "paid_amount": order["final_amount"]}
+            if order.get("delivered_at"):
+                context["days_since_delivery"] = (datetime.now() - datetime.fromisoformat(order["delivered_at"])).days
+            check = policy_retriever.check_rule(action, context)
+            if not check["allowed"]:
+                self.state_machine.transition_to(AgentState.FAILED)
+                return {"response": check["reason"], "state": "FAILED", "policy": check}
+        tool_name, _ = self._map_intent_to_tool(intent, entities)
+        registered = tool_registry.get_tool(tool_name) if tool_name else None
+        if registered and registered[0].requires_confirmation:
             # 需要用户确认
             self.state_machine.transition_to(AgentState.USER_CONFIRMATION)
             return await self._ask_for_confirmation(intent, entities)
@@ -276,21 +300,8 @@ class CustomerServiceAgent:
             # 继续收集
             return await self._ask_for_info(remaining_missing)
 
-        # 信息收集完成，检查是否需要确认
         intent = self.state_machine.context.intent
-        if intent in ["cancel_order", "request_refund", "freeze_account"]:
-            self.state_machine.transition_to(AgentState.USER_CONFIRMATION)
-            return await self._ask_for_confirmation(
-                intent,
-                self.state_machine.context.collected_info,
-            )
-
-        # 直接执行
-        self.state_machine.transition_to(AgentState.TOOL_EXECUTION)
-        return await self._execute_intent(
-            intent,
-            self.state_machine.context.collected_info,
-        )
+        return await self._prepare_execution(intent, self.state_machine.context.collected_info)
 
     async def _handle_user_confirmation(self, user_message: str) -> dict[str, Any]:
         """处理用户确认状态"""
@@ -306,7 +317,7 @@ class CustomerServiceAgent:
             )
         else:
             # 用户取消，回到初始状态
-            self.state_machine.transition_to(AgentState.INIT)
+            self.state_machine = AgentStateMachine(self.session_id)
             return {
                 "response": "好的，已取消操作。请问还有其他可以帮您的吗？",
                 "state": self.state_machine.current_state.value,
@@ -465,9 +476,15 @@ class CustomerServiceAgent:
 
                 # 记录工具调用
                 self.state_machine.add_tool_call(tool_name, tool_args, result)
+                self.state_machine.transition_to(AgentState.RESULT_VERIFICATION)
+                if not result.get("success") or (isinstance(result.get("result"), dict) and result["result"].get("success") is False):
+                    raise RuntimeError(result.get("result", {}).get("error", "业务操作未成功"))
 
                 # 生成回复
-                response = await self._generate_tool_response(intent, result)
+                try:
+                    response = await self._generate_tool_response(intent, result)
+                except Exception:
+                    response = guardrails.mask_output("操作已完成。业务系统返回：" + json.dumps(result.get("result"), ensure_ascii=False))
 
                 # 转换到完成状态
                 self.state_machine.transition_to(AgentState.COMPLETED)
@@ -476,6 +493,7 @@ class CustomerServiceAgent:
                     "response": response,
                     "state": self.state_machine.current_state.value,
                     "tool_result": result,
+                    "tool_calls": [{"tool_name": tool_name, "arguments": tool_args, **result}],
                 }
             else:
                 return {
@@ -492,6 +510,7 @@ class CustomerServiceAgent:
                 error=str(e),
             )
 
+            self.state_machine.transition_to(AgentState.ROLLBACK)
             self.state_machine.transition_to(AgentState.FAILED)
 
             return {

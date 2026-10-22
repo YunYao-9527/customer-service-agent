@@ -12,6 +12,8 @@ import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse
+from pathlib import Path
 
 from src.api.routes import router
 from src.config import get_settings
@@ -85,7 +87,7 @@ def create_app() -> FastAPI:
 
     @app.get("/", include_in_schema=False)
     async def index():
-        return RedirectResponse("/docs")
+        return FileResponse(Path(__file__).parent / "web" / "index.html")
 
     # 健康检查
     @app.get("/health")

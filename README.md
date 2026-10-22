@@ -8,10 +8,10 @@
 
 - **真实业务操作**：不是问答助手，而是能执行退款、取消订单、冻结账户等操作的 Agent
 - **多轮对话管理**：状态机驱动的对话流程，支持信息收集、用户确认、错误恢复
-- **Policy RAG**：从业务规则中判断操作是否允许，而不是硬编码逻辑
-- **Saga 事务模式**：每个高风险操作都有补偿机制，保证数据一致性
+- **政策检索与校验**：关键词检索政策文档，并用确定性规则检查退款状态、金额与时效
+- **退款补偿流程**：退款申请写入后校验业务状态，失败时删除申请并恢复订单状态
 - **安全防护**：Prompt Injection 检测、敏感信息脱敏、权限校验
-- **完整评测体系**：7 个量化指标，50+ 测试场景
+- **评测与测试**：25 个 YAML 场景、7 个指标定义，32 项自动化测试通过；真实模型评测需另行配置
 
 ## 技术栈
 
@@ -19,8 +19,8 @@
 |------|----------|------|
 | 后端框架 | FastAPI | 高性能异步 Web 框架 |
 | 数据库 | PostgreSQL | 支持事务的关系型数据库 |
-| 缓存 | Redis | 会话状态存储 |
-| 向量数据库 | ChromaDB | Policy RAG 检索 |
+| 会话 | 内存 | 当前对话状态；Redis 为预留配置 |
+| 政策检索 | 关键词检索 | 文档检索与确定性规则；向量组件为可选扩展 |
 | LLM | OpenAI / Anthropic | 支持双 Provider 切换 |
 | Agent 框架 | 自研 | 不依赖 LangChain，展示底层能力 |
 
@@ -63,7 +63,7 @@ USER_CONFIRMATION → TOOL_EXECUTION → RESULT_VERIFICATION → COMPLETED
 
 ```bash
 # 克隆项目
-git clone https://github.com/yourusername/customer-service-agent.git
+git clone https://github.com/YunYao-9527/customer-service-agent.git
 cd customer-service-agent
 
 # 创建虚拟环境
@@ -175,7 +175,7 @@ make eval-report
 
 ### 评测场景
 
-项目包含 50+ 评测场景，覆盖：
+项目包含 25 个评测场景，覆盖：
 
 - 基础操作：订单查询、物流查询
 - 退款流程：全额退款、部分退款、退款失败
@@ -311,20 +311,20 @@ if not safety_check["safe"]:
 ### 核心职责
 
 1. 设计并实现了基于状态机的多轮对话管理，支持信息收集、用户确认、错误恢复等复杂流程
-2. 实现了 Policy RAG 系统，从业务规则文档中检索政策，动态判断操作是否允许
-3. 设计了 Saga 事务模式，为每个高风险操作提供补偿机制，保证数据一致性
+2. 实现政策关键词检索与确定性校验，拒绝超时效、超金额和不符合订单状态的退款
+3. 将 Saga 补偿接入退款申请流程，通过注入校验故障验证订单与退款单恢复
 4. 实现了 Prompt Injection 检测、敏感信息脱敏、权限校验等安全防护机制
-5. 构建了完整的评测框架，包含 50+ 测试场景和 7 个量化指标
+5. 构建包含 25 个场景与 7 个指标定义的评测框架，并通过 32 项自动化测试
 
 ### 技术栈
 
-Python, FastAPI, PostgreSQL, Redis, ChromaDB, OpenAI API, SQLAlchemy
+Python, FastAPI, SQLite / PostgreSQL, OpenAI-compatible API, SQLAlchemy
 
 ### 项目成果
 
-- 任务完成率 ≥ 90%，状态正确率 ≥ 95%
+- 32 项自动化测试通过，包括确认流转、政策拒绝与退款故障补偿；未声明真实模型任务完成率
 - 支持 8 种业务操作，覆盖订单、退款、物流、账户等场景
-- 实现了完整的安全防护，成功拦截 95% 的 Prompt Injection 攻击
+- 实现基础注入检测和脱敏，并通过现有测试；未进行可支持“95% 拦截率”的独立安全评测
 
 ## License
 

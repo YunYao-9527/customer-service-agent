@@ -5,6 +5,7 @@
 """
 
 import os
+import re
 from pathlib import Path
 from typing import Any, Optional
 
@@ -85,8 +86,10 @@ class PolicyRetriever:
     def _calculate_relevance(self, query: str, content: str) -> float:
         """计算查询与内容的相关性"""
         # 简单的关键词匹配
-        query_words = set(query.split())
-        content_words = set(content.split())
+        aliases = {"refund": "退款", "cancel": "取消", "shipping": "物流", "freeze": "冻结"}
+        query = aliases.get(query, query)
+        query_words = set(re.findall(r"[a-z0-9_]+|[\u4e00-\u9fff]", query))
+        content_words = set(re.findall(r"[a-z0-9_]+|[\u4e00-\u9fff]", content))
 
         # 计算交集比例
         if not query_words:
@@ -112,23 +115,28 @@ class PolicyRetriever:
         Returns:
             检查结果
         """
-        # 检索相关政策
         relevant_policies = self.retrieve(action)
-
-        if not relevant_policies:
-            return {
-                "allowed": True,
-                "reason": "未找到相关规则，默认允许",
-                "policies": [],
-            }
-
-        # 分析规则
-        # 这里简化处理，实际应该使用 LLM 分析政策内容
-        return {
-            "allowed": True,
-            "reason": "符合相关政策",
-            "policies": [p["name"] for p in relevant_policies],
-        }
+        reason = "符合当前业务政策"
+        allowed = True
+        status = context.get("order_status")
+        if action == "refund":
+            policy = self.get_policy("refund_policy") or ""
+            match = re.search(r"签收后\s*(\d+)\s*天", policy)
+            limit = int(match.group(1)) if match else 7
+            if status not in {"paid", "shipped", "delivered"}:
+                allowed, reason = False, "当前订单状态不允许退款"
+            elif context.get("amount") is not None and (
+                float(context["amount"]) <= 0 or float(context["amount"]) > float(context.get("paid_amount", 0))
+            ):
+                allowed, reason = False, "退款金额必须大于零且不能超过实付金额"
+            elif status == "delivered" and context.get("days_since_delivery") is None:
+                allowed, reason = False, "缺少签收时间，需要人工核查退款时效"
+            elif status == "delivered" and context.get("days_since_delivery", 0) > limit:
+                allowed, reason = False, f"已超过签收后 {limit} 天的普通退款时效，请联系人工核查质量问题"
+        elif action in {"cancel", "shipping"} and status not in {"pending", "paid"}:
+            allowed, reason = False, "订单已发货或已结束，不能直接取消或修改地址"
+        return {"allowed": allowed, "reason": reason,
+                "policies": [p["name"] for p in relevant_policies]}
 
 
 # 全局政策检索器

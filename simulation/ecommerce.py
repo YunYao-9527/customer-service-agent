@@ -30,6 +30,8 @@ from src.db.models import (
     RefundStatus,
     User,
 )
+from src.rag.retriever import policy_retriever
+from src.db.transaction import SagaExecutor, SagaStatus
 
 logger = structlog.get_logger()
 
@@ -111,6 +113,7 @@ class EcommerceSimulator:
             "created_at": order.created_at.isoformat(),
             "paid_at": order.paid_at.isoformat() if order.paid_at else None,
             "shipped_at": order.shipped_at.isoformat() if order.shipped_at else None,
+            "delivered_at": order.delivered_at.isoformat() if order.delivered_at else None,
         }
 
     async def get_user_orders(self, user_id: int, limit: int = 10) -> list[dict]:
@@ -244,7 +247,14 @@ class EcommerceSimulator:
             return {"success": False, "error": "未找到支付记录"}
 
         # 确定退款金额
-        refund_amount = Decimal(str(amount)) if amount else payment.amount
+        refund_amount = Decimal(str(amount)) if amount is not None else payment.amount
+        policy = policy_retriever.check_rule("refund", {
+            "order_status": order.status.value, "amount": float(refund_amount),
+            "paid_amount": float(payment.amount),
+            "days_since_delivery": (datetime.now() - order.delivered_at).days if order.delivered_at else None,
+        })
+        if not policy["allowed"]:
+            return {"success": False, "error": policy["reason"], "policy": policy}
 
         if refund_amount > payment.amount:
             return {
@@ -275,12 +285,35 @@ class EcommerceSimulator:
             reason=reason,
             status=RefundStatus.PENDING,
         )
-        self.db.add(refund)
+        original_status = order.status
+        order_id = order.id
 
-        # 更新订单状态
-        order.status = OrderStatus.REFUNDING
+        async def create_request():
+            self.db.add(refund)
+            order.status = OrderStatus.REFUNDING
+            await self.db.commit()
+            return refund.id
 
-        await self.db.commit()
+        async def compensate_request(refund_id):
+            await self.db.rollback()
+            saved_order = await self.db.get(Order, order_id)
+            saved_refund = await self.db.get(Refund, refund_id)
+            if saved_refund:
+                await self.db.delete(saved_refund)
+            saved_order.status = original_status
+            await self.db.commit()
+
+        async def verify_request():
+            await self._verify_refund(refund.id, order_id)
+
+        saga = SagaExecutor()
+        context = saga.create_saga()
+        saga.add_step(context, "create_refund", create_request, compensate_request)
+        saga.add_step(context, "verify_refund", verify_request)
+        await saga.execute(context)
+        if context.status != SagaStatus.COMPLETED:
+            reason = "退款校验失败，补偿已完成" if context.status == SagaStatus.COMPENSATED else "退款校验失败，补偿未完成，需要人工处理"
+            return {"success": False, "error": reason, "saga_status": context.status.value}
 
         logger.info("refund_requested", order_no=order_no, refund_no=refund.refund_no)
 
@@ -289,7 +322,14 @@ class EcommerceSimulator:
             "refund_no": refund.refund_no,
             "amount": float(refund_amount),
             "status": refund.status.value,
+            "saga_status": context.status.value,
         }
+
+    async def _verify_refund(self, refund_id, order_id):
+        saved_refund = await self.db.get(Refund, refund_id)
+        saved_order = await self.db.get(Order, order_id)
+        if not saved_refund or saved_refund.amount <= 0 or saved_order.status != OrderStatus.REFUNDING:
+            raise RuntimeError("Refund consistency check failed")
 
     async def approve_refund(self, refund_no: str) -> dict:
         """批准退款"""
